@@ -9,7 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 #%% data import 
 df=pd.read_csv("FPcontrols_livecell.csv")
-# df=pd.read_csv("RawData_FPcontrols_livecell_10X.csv")
+#%% merging to construct and condition
+conditions=pd.read_csv("FPcontrols_plate_layout.csv")
+df=pd.merge(df,conditions,on=['construct','well'],how='outer').dropna()
 #%% defining plot_FP function: will slice data, do linear fits between two channels
 def plot_FP(df,construct,x,y):
     selected=df[df['construct']==construct]
