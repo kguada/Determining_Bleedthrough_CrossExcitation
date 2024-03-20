@@ -7,6 +7,21 @@ Created on Sun Nov 21 14:28:10 2021
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+# %% general parameters for all figures
+mpl.style.use('default')
+mpl.rcParams['axes.linewidth'] = 7  # set the value globally
+mpl.rcParams['xtick.major.size'] = 20
+mpl.rcParams['xtick.major.width'] = 7
+mpl.rcParams['xtick.minor.size'] = 10
+mpl.rcParams['xtick.minor.width'] = 7
+mpl.rcParams['ytick.major.size'] = 20
+mpl.rcParams['ytick.major.width'] = 7
+mpl.rcParams['ytick.labelsize'] = 50
+mpl.rcParams['xtick.labelsize'] = 50
+mpl.rcParams['ytick.minor.size'] = 10
+mpl.rcParams['ytick.minor.width'] = 7
+mpl.rcParams['font.size'] = 55
+mpl.rcParams['font.sans-serif'] = 'Arial'
 #%% data import 
 df=pd.read_csv("FPcontrols_livecell.csv")
 colors=pd.read_csv("GSs_color_scheme.csv")
@@ -54,14 +69,28 @@ plt.savefig('bleedthrough.svg', format="svg",bbox_inches='tight')
 ## for cells expressing only mNeonGreen [select data that contains only mNG]
 ## plotting direct acceptor on the x-axis (ch3)
 ## plotting acceptor emission under FRET on the y-axis (ch2)
-
 # plot_FP(df,'mNG',"ch3",'ch2')
 plot_FP(df,'mNG',"directA",'A')
 plt.ylabel('acceptor emission \n(ch2)',size=60)
 plt.xlabel("direct acceptor emission \n(ch3)",size=60)
 plt.savefig('crossexcitation.svg', format="svg",bbox_inches='tight')
+#%% function to calculate slopes (bleed through and cross excitation) 
+def find_slope(df,construct,x,y):
+    selected=df[df['construct']==construct]
+    p,cov=np.polyfit(selected[x], selected[y],1,cov=True)
+    slope=p[0]
+    intercept=p[1]
+    std_err=np.sqrt(np.diag(cov))
+    slope_std_err= std_err[0]
+    int_std_err = std_err[1]
+    return(slope)
+#%% applying correction factors
+bleedthrough= 0.39 #find_slope(df,'mTQ',"D",'A')
+crossexcitation= 0.1 #find_slope(df,'mNG',"directA",'A')
+df['A_corrected']=df['A']-(df['D']*bleedthrough)-(df['directA']*crossexcitation)
+df['Ef']=df['A']/(df['D']+df['A_corrected'])
 #%% defining plot_GSs function: violins of all the GS linkers 
-def plot_GSs(df1):
+def plot_GSs(df1,Ef_col):
     allMeans = pd.DataFrame()
     GSs = ['GS0','GS16','GS32','GS48']
     fig,ax = plt.subplots(1,1, figsize=[10,10], sharex=True, sharey=True)
@@ -72,14 +101,14 @@ def plot_GSs(df1):
         sliced = df1[df1.construct==prot]
         color = colors[colors['construct']==prot]['color']
         N_res = int(prot[2:])*2
-        parts = ax.violinplot(sliced['Ef_dirty'],positions=[N_res],
+        parts = ax.violinplot(sliced[Ef_col],positions=[N_res],
                               widths=20,showextrema=False)
         for pc in parts['bodies']:
             pc.set_facecolor(color)
             pc.set_edgecolor('black')
             pc.set_lw(3)
             pc.set_alpha(1)
-        bot, quartile1, medians, quartile3, top = np.percentile(sliced['Ef_dirty'], [5, 25, 50, 75, 95])
+        bot, quartile1, medians, quartile3, top = np.percentile(sliced[Ef_col], [5, 25, 50, 75, 95])
         allMeans = allMeans.append({'color':color.values[0],
                                     'prot':prot,'q1':quartile1,'median':medians,'q3':quartile3},ignore_index=True)
         ax.vlines(N_res, quartile1, quartile3, color='r', linestyle='-', lw=10)
@@ -106,5 +135,8 @@ def plot_GSs(df1):
 
 #%% plotting GS series
 GSs_df=df[df['construct'].str.startswith('GS')]
-plot_GSs(GSs_df)
+
+plot_GSs(GSs_df,'Ef_dirty')
+plot_GSs(GSs_df,'Ef')
+
 
