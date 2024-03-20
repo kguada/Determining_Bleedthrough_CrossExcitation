@@ -1,0 +1,8 @@
+construct,color,N
+GS0,black,0
+GS8,dimgrey,16
+GS16,grey,32
+GS24,darkgrey,48
+GS32,silver,64
+GS48,lightgray,96
+GS64,gainsboro,128
